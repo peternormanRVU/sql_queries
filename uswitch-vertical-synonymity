@@ -1,0 +1,30 @@
+select 
+date_trunc(date ,month) month,
+case 
+  when  regexp_contains(keyword, r'uswitch energy|you switch energy|u switch energy|uswich energy|u swich energy|u swith energy|uswith energy|uswitch gas and|u switch gas and|uswitch elec|u switch elec|uswitch gas|u switch gas|uswitch.com energy|uswitch.com elec|uswitch.com gas|uswitch boiler|uswitch.com boiler|u switch boiler|uswitch utili|uswitch business ene|uswitch business elec|uswitch scottish') then 'energy brand'
+	when  regexp_contains(keyword, r'uswitch broadband|you switch broadband|u switch broadband|uswich broadband|u swich broadband|u swith broadband|uswith tv|uswitch fibre|uswitch tv|uswitch speed|uswitch bt|bt uswitch|uswitch internet|broadband usw|uswitch virgin|uswitch wifi|uswitch business bro|uswitch.com broadband|test uswitch|broadband deals usw') then 'broadband brand'
+  when  regexp_contains(keyword, r'uswitch mobile|you switch mobile|u switch mobile|uswich energy|u swich mobile|u swith mobile|uswitch simo|uswitch gas and|u switch simo|uswitch phone|u switch phone|uswitch iphone|uswitch samsun|uswitch contract p|s20 ultra uswitch|uswitch lebara|uswitch handset|uswitch sim|iphone 11 uswitch|iphone 11 pro uswitch|iphone xr uswi|uswitch s10|s20 uswit|uswitch s20|iphone xs uswit') then 'mobile brand' 
+	when regexp_contains(keyword, r'uswitch|you switch|u switch|uswich|u swich|u swith|uswith') then 'pure brand'
+  else 'generic' 
+end branded ,
+
+case 
+  when url_clean like '%com/' then 'homepage' 
+  when regexp_contains(url_clean, r'boiler|gas|electricity|energy|[^A-Za-z]water[^A-Za-z]|[^A-Za-z]electric[^A-Za-z]|[^A-Za-z]power[^A-Za-z]') and (not regexp_contains(url_clean, r'broadband|mobiles|insurance|boiler-cover|boilercover') or regexp_contains(url_clean, r'/energy')) then 'energy'
+  when (regexp_contains(url_clean, r'iphone|samsung|pixel|deal-o-meter|motorola|nokia|xperia|google|huawei|mobiles/reviews|mobile-phone|mobile_phone|android|honor|oneplus|switch-mobile|manufacturer|rumours|mobile-phone|refurbish|smartphone|smart-phone|phones/') or url_clean like '%mobiles/') then 'handsets'
+  when (url_clean like '%/broadband/%') then 'broadband'
+  when regexp_contains(url_clean, r'sim_only|sim-only|sim only|data_only|data-only|simonly|data-sim|sim-card') then 'simo' 
+  when regexp_contains(url_clean, r'credit-card|creditcard|current-account|loan|mortgage|banking|charge-card|debt-management|conveyancing') and not regexp_contains(url_clean, r'insurance|/savings-account') then 'fs'
+  when regexp_contains(url_clean, r'credit-report|insurance|travel-money|savings-account|savings-isa|pension|prepaid-card|share-dealing|critical-illness-cover|breakdown-cover|income-protection|money-transfer|investment-isa|[^A-Za-z]investment|forex|selling-endowments|financial-spread-betting|cfd|[^A-Za-z]motor[^A-Za-z]|binary-option|golf-buggy-insurance|portfolio-management|boiler-cover|boilercover') and (not regexp_contains(url_clean, r'current-account|current-and-savings-account|credit-card|mortgage') or regexp_contains(url_clean, r'income-protection-insurance')) then 'fs'
+  else 'other'
+end url_subvertical,
+ 
+sum(clicks) clks, 
+sum(impressions) imps 
+
+from `rvu-seo.seo.google_search_console_uswitch_com` 
+where 1=1
+and date > '2020-01-01' 
+group by 1,2,3
+order by 1 
+
