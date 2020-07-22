@@ -1,0 +1,6 @@
+--, cast(
+--    case
+--      when organic_results_true_rank = '-' then null
+--      else organic_results_true_rank
+--    end as int64
+--  ) as result_type_rank
