@@ -1,0 +1,108 @@
+with keywords as (
+  select 
+    date,
+    keyword, 
+    url,
+    position, 
+    device
+  from `rvu-seo.google_search_console.00_reports_google_search_console__all_rvu_sites_gbr_categorised` 			
+  where 1=1			
+  and country = 'gbr'
+  and keyword in (select keyword from `rvu-seo.seo.01_gold_google_sheets__seo_keyword_information` where status = 'active' ) 
+) ,
+-- take only the top ranking Uswitch URL for each keyword 
+keywords_agg as (
+  select 
+    date, 
+    keyword, 
+    device,
+    min(position) min_rank 
+  from keywords
+  group by 1,2,3
+) ,
+-- collect the max rank over time for each keyword
+keyword_group as (
+  select
+    keyword,
+    device,
+    max(min_rank) max_rank
+  from keywords_agg 
+  group by 1,2
+) , 
+ng_desktop as ( 
+  select 
+  date, 
+  keyword, 
+  device,
+  max(clicks) max_clicks
+  from `rvu-seo.google_search_console.00_reports_google_search_console__all_rvu_sites_gbr_categorised` 
+  where 1=1
+  and keyword in (select keyword from keyword_group where max_rank <= 10) -- filter on keywords which have always ranked in SERP 1
+  and device = 'desktop' 
+  and country = 'gbr'
+
+  group by 1,2,3
+), 
+ng_mobiles as ( 
+  select 
+  date, 
+  keyword, 
+  device,
+  max(clicks) max_clicks
+  from `rvu-seo.google_search_console.00_reports_google_search_console__all_rvu_sites_gbr_categorised` 
+  where 1=1
+  and keyword in (select keyword from keyword_group where max_rank <= 10) -- filter on keywords which have always ranked in SERP 1
+  and device = 'mobile' 
+  and country = 'gbr'
+  group by 1,2,3
+),
+ng as (
+  select * from ng_desktop 
+  UNION ALL 
+  select * from ng_mobiles 
+),
+-- collect daily gsc data using filtered keyword list where maxrank <= 10 (ie. SERP1)  
+daily as ( 
+  select			
+    ng.date,			
+    ng.keyword, 
+    ng.device,
+    ng.max_clicks clicks, 
+    gsc.position,
+    gsc.url_clean,
+    gsc.url_group,
+    gsc.url_vertical,
+    gsc.url_subvertical,
+    gsc.url_product_category,
+    c.seo_category,
+    c.brand_or_generic,
+    c.intent, 
+    c.google_keyword_planner_ideas_volume_12_month,
+    gsc.impressions
+  from ng 
+  left join `rvu-seo.google_search_console.00_reports_google_search_console__all_rvu_sites_gbr_categorised` gsc 
+    on ng.keyword = gsc.keyword and ng.device = gsc.device and ng.max_clicks = gsc.clicks and ng.date = gsc.date 
+  left join `rvu-seo.seo.01_gold_google_sheets__seo_keyword_information` c 
+    on gsc.keyword = c.keyword 
+  where 1=1			
+  and gsc.country = 'gbr'			
+)
+select 
+  date, --date_trunc(date, week) week, 
+  device,
+  url_group,
+  url_vertical,
+  url_subvertical,
+  url_product_category,
+  url_clean, 
+  seo_category,
+  brand_or_generic,
+  intent, 
+  count(distinct keyword) keyword_count, 
+  sum(impressions) impressions, 
+  sum(clicks) clicks,
+  sum(cast(google_keyword_planner_ideas_volume_12_month as numeric)) volume,
+  avg(position) avg_rank, 
+from daily 
+group by 1,2,3,4,5,6,7,8,9,10
+order by 1
